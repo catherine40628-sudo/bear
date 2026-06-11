@@ -1,0 +1,210 @@
+
+<style>
+  * { box-sizing: border-box; }
+  body, div { font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif); }
+  .scene-btn {
+    font-size: 14px; padding: 10px 28px; border-radius: 3px;
+    border: 1.5px solid #111; background: transparent;
+    color: #111; cursor: pointer; font-weight: 600;
+    letter-spacing: 0.04em; transition: all 0.15s;
+  }
+  .scene-btn:hover:not(.active) { background: #f4f4f4; }
+  .scene-btn.base.active  { background: #111; color: #fff; border-color: #111; }
+  .scene-btn.bull.active  { background: #1a56c4; color: #fff; border-color: #1a56c4; }
+  .scene-btn.bear.active  { background: #b03a2e; color: #fff; border-color: #b03a2e; }
+
+  .indicator-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 0;
+    border-bottom: 1px solid #eee;
+    padding: 18px 0;
+    align-items: start;
+  }
+  .indicator-row:last-child { border-bottom: none; }
+
+  .ind-label {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #888; padding-top: 2px;
+  }
+  .ind-content { }
+  .ind-value {
+    font-size: 22px; font-weight: 700; color: #111;
+    margin-bottom: 4px; line-height: 1.1;
+  }
+  .ind-desc { font-size: 13px; color: #555; line-height: 1.6; }
+
+  .prob-bar-wrap { margin-top: 6px; display: flex; align-items: center; gap: 10px; }
+  .prob-bar-bg { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+  .prob-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .prob-label { font-size: 12px; color: #888; white-space: nowrap; }
+
+  .tagline {
+    margin-top: 24px; padding: 14px 18px;
+    border-radius: 3px; font-size: 14px; font-weight: 500;
+    line-height: 1.6; border-left: 4px solid #111;
+    background: #f9f9f9; color: #111;
+    transition: all 0.2s;
+  }
+
+  .now-badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 2px; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-left: 10px; vertical-align: middle;
+  }
+</style>
+
+<div style="padding: 1rem 0 0.5rem;">
+
+  <p style="font-size: 13px; color: #777; margin: 0 0 20px; letter-spacing: 0.03em; text-transform: uppercase;">
+    2026 美國景氣情境比對 &nbsp;｜&nbsp; 點選情境切換
+  </p>
+
+  <!-- Scenario buttons -->
+  <div style="display:flex; gap:10px; margin-bottom:28px; flex-wrap:wrap;">
+    <button class="scene-btn base active" onclick="setScene('base',this)">Base　溫和擴張</button>
+    <button class="scene-btn bull" onclick="setScene('bull',this)">Bull　軟著陸延續</button>
+    <button class="scene-btn bear" onclick="setScene('bear',this)">Bear　高利率壓力</button>
+  </div>
+
+  <!-- Probability bar -->
+  <div style="margin-bottom:24px;">
+    <div style="font-size:12px; color:#888; margin-bottom:6px; text-transform:uppercase; letter-spacing:.05em;">市場隱含機率估計</div>
+    <div style="display:flex; gap:0; height:10px; border-radius:3px; overflow:hidden; width:100%;">
+      <div id="bar-base" style="background:#111; transition:width .4s ease;"></div>
+      <div id="bar-bull" style="background:#1a56c4; transition:width .4s ease;"></div>
+      <div id="bar-bear" style="background:#b03a2e; transition:width .4s ease;"></div>
+    </div>
+    <div style="display:flex; gap:0; margin-top:6px; font-size:12px; color:#888;">
+      <div id="label-base" style="transition:width .4s ease; overflow:hidden; white-space:nowrap; text-align:left;">Base</div>
+      <div id="label-bull" style="transition:width .4s ease; overflow:hidden; white-space:nowrap; text-align:center;">Bull</div>
+      <div id="label-bear" style="transition:width .4s ease; overflow:hidden; white-space:nowrap; text-align:right;">Bear</div>
+    </div>
+  </div>
+
+  <!-- Indicators -->
+  <div id="indicators"></div>
+
+  <!-- Tagline -->
+  <div class="tagline" id="tagline"></div>
+
+  <!-- Investment implication -->
+  <div style="margin-top:20px;">
+    <div style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#888; margin-bottom:10px;">資產配置含義</div>
+    <div id="allocation" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:8px;"></div>
+  </div>
+
+</div>
+
+<script>
+const SCENES = {
+  base: {
+    prob: 55,
+    label: 'Base　溫和擴張',
+    color: '#111',
+    current: true,
+    indicators: [
+      { label:'GDP 成長', value:'~2%', desc:'消費支出放緩但未崩潰，企業資本支出穩健，AI 相關投資持續拉抬。實質 GDP 維持溫和擴張，不觸發衰退訊號。' },
+      { label:'核心通膨', value:'2.5–3%', desc:'服務業黏性通膨仍在，但關稅二次衝擊逐步消化。Core PCE 緩降但停在 2% 目標上方，「最後一哩路」繼續消耗時間。' },
+      { label:'Fed 利率', value:'3.25–3.5%', desc:'Warsh 主導下謹慎降息，全年 1–2 次，以數據為前提。長端利率維持 4.3–4.5%，實質利率仍具限制性。' },
+      { label:'S&P 500', value:'+8–12%', desc:'獲利支撐行情，Mag7 貢獻主要漲幅。估值擴張空間有限，上行主要靠 EPS 成長而非本益比提升。' },
+    ],
+    tagline: '現在最可能的位置：景氣擴張尾段，獲利仍在增長，但估值已反映大部分好消息。股市上行需要獲利持續兌現，容錯空間縮小。',
+    allocation: [
+      { asset:'AI 成長股', stance:'加碼', color:'#1a56c4' },
+      { asset:'短債 / 貨幣市場', stance:'持有', color:'#555' },
+      { asset:'防禦股', stance:'標配', color:'#555' },
+      { asset:'長債', stance:'低配', color:'#b03a2e' },
+    ]
+  },
+  bull: {
+    prob: 25,
+    label: 'Bull　軟著陸延續',
+    color: '#1a56c4',
+    current: false,
+    indicators: [
+      { label:'GDP 成長', value:'2.5–3%', desc:'消費韌性超預期，就業市場重新升溫。AI 資本支出溢出效應擴散至更廣泛產業，製造業回流帶動投資加速。' },
+      { label:'核心通膨', value:'2–2.5%', desc:'服務業通膨出現結構性降溫，租金回落速度快於預期。Core PCE 逼近 2% 目標，Fed 獲得更大降息空間。' },
+      { label:'Fed 利率', value:'2.75–3%', desc:'通膨降溫允許 Fed 加速降息，Warsh 政策風格偏鷹但數據迫使寬鬆。長端利率同步下行，估值壓力解除。' },
+      { label:'S&P 500', value:'+18–25%', desc:'EPS 成長 15%+ 加上本益比小幅擴張，指數重新定價。Mag7 以外的板塊出現補漲，市場廣度改善。' },
+    ],
+    tagline: '觸發條件：通膨快速降至 2%、就業市場再次升溫、Fed 明確轉向。三個條件同時成立的機率不高，但若成立，資產價格的重新定價速度會非常快。',
+    allocation: [
+      { asset:'成長股全面加碼', stance:'加碼', color:'#1a56c4' },
+      { asset:'長債', stance:'加碼', color:'#1a56c4' },
+      { asset:'非美股市', stance:'加碼', color:'#1a56c4' },
+      { asset:'現金', stance:'減碼', color:'#b03a2e' },
+    ]
+  },
+  bear: {
+    prob: 20,
+    label: 'Bear　高利率壓力',
+    color: '#b03a2e',
+    current: false,
+    indicators: [
+      { label:'GDP 成長', value:'0.5–1%', desc:'高利率持續壓制消費信貸與企業資本支出，關稅推升成本侵蝕利潤率。消費者實質工資倒退惡化需求，景氣陷入停滯性通膨。' },
+      { label:'核心通膨', value:'3%+', desc:'關稅成本全面轉嫁，中東衝突維持能源高價。Core CPI 回升至 3% 以上，Fed 面對「不能降、也不能升」的政策困境。' },
+      { label:'Fed 利率', value:'3.75%+（不動）', desc:'通膨反彈使 Fed 完全無法降息，甚至面臨升息壓力。Warsh 政策信譽面臨考驗，市場對央行獨立性的疑慮加深。' },
+      { label:'S&P 500', value:'-10–20%', desc:'估值壓縮加上 EPS 下修雙重打擊。高本益比成長股首當其衝，防禦股與大宗商品相對抗跌。信用利差擴大。' },
+    ],
+    tagline: '觸發條件：通膨二次抬頭突破 3.5%，或地緣衝突推升能源至新高，或消費者信心崩潰引發需求驟降。目前機率約 20%，但尾部風險不可忽視。',
+    allocation: [
+      { asset:'防禦股 / 公用事業', stance:'加碼', color:'#1a56c4' },
+      { asset:'大宗商品', stance:'加碼', color:'#1a56c4' },
+      { asset:'成長股', stance:'減碼', color:'#b03a2e' },
+      { asset:'長債', stance:'低配', color:'#b03a2e' },
+    ]
+  }
+};
+
+const PROBS = { base:55, bull:25, bear:20 };
+
+function setScene(key, btn) {
+  document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render(key);
+}
+
+function render(key) {
+  const s = SCENES[key];
+
+  // Probability bar
+  document.getElementById('bar-base').style.width = PROBS.base + '%';
+  document.getElementById('bar-bull').style.width = PROBS.bull + '%';
+  document.getElementById('bar-bear').style.width = PROBS.bear + '%';
+  document.getElementById('label-base').style.width = PROBS.base + '%';
+  document.getElementById('label-bull').style.width = PROBS.bull + '%';
+  document.getElementById('label-bear').style.width = PROBS.bear + '%';
+  document.getElementById('label-base').textContent = `Base ${PROBS.base}%`;
+  document.getElementById('label-bull').textContent = `Bull ${PROBS.bull}%`;
+  document.getElementById('label-bear').textContent = `Bear ${PROBS.bear}%`;
+
+  // Indicators
+  const indEl = document.getElementById('indicators');
+  indEl.innerHTML = s.indicators.map(ind => `
+    <div class="indicator-row">
+      <div class="ind-label">${ind.label}</div>
+      <div class="ind-content">
+        <div class="ind-value" style="color:${s.color}">${ind.value}</div>
+        <div class="ind-desc">${ind.desc}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Tagline
+  const tg = document.getElementById('tagline');
+  tg.textContent = s.tagline;
+  tg.style.borderLeftColor = s.color;
+  tg.style.background = key === 'base' ? '#f9f9f9' : key === 'bull' ? '#eef3fc' : '#fdf0ef';
+
+  // Allocation
+  document.getElementById('allocation').innerHTML = s.allocation.map(a => `
+    <div style="border:1.5px solid #ddd; border-radius:3px; padding:10px 12px; background:#fff;">
+      <div style="font-size:13px; color:#111; font-weight:500; margin-bottom:3px;">${a.asset}</div>
+      <div style="font-size:12px; font-weight:700; color:${a.color}; text-transform:uppercase; letter-spacing:.04em;">${a.stance}</div>
+    </div>
+  `).join('');
+}
+
+render('base');
+</script>
